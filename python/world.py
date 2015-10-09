@@ -1,30 +1,61 @@
 import numpy as np
 import math
-import matplotlib.pyplot as plt
+import threading
+
+speed = 7.0;
 
 
 class World:
     """World class"""
 
-    ticks_per_frame = 50
-
     def __init__(self):
-        self.dynamic = {}
-        self.static = {}
+        self.childs = {}
+        self.fps = 50
+        self.time_offset = 1.0 / self.fps
+        self.state = 0 #ready
+        # self.speed = 7.0;
+        # self.static = {}
 
     def add_child(self, child):
-        self.dynamic.update({child.id, child})
-        child.set_parent(this)
+        self.childs[child.id] = child
+        child.set_parent(self)
 
     def del_child(self, id):
-        self.dynamic.pop(id)
+        self.childs.pop(id)
 
     def step(self):
-        for c in self.dynamic:
-            c.step()
+        for key in self.childs:
+            self.childs[key].update()
 
     def check_collisions(self):
         return 0
+
+    def start(self):
+        if self.state == 0:
+            self.state = 1
+            self.run()
+
+    def abort(self):
+        if self.state == 1:
+            self.state = 0
+
+    def run(self):
+        if self.state == 1:
+            threading.Timer(self.time_offset, self.run).start()
+        self.step()
+
+    def modify_child(self, id, velocity, angle):
+        self.childs[id].modify(velocity, angle)
+
+    def world_state(self):
+        message = ''
+        for key in self.childs:
+            body = self.childs[key]
+            message += '^' + body.id
+            message += '^' + str(body.position[0])
+            message += '^' + str(body.position[1])
+            message += '^' + str(body.angle)
+        return message
 
 
 class Body:
@@ -33,15 +64,20 @@ class Body:
     def __init__(self, id, shape, position): #, static):
         self.id = id
         self.shape = shape
-        self.position = position
+        self.position = np.array(position, dtype=float)
         self.angle = 0.0
-        self.velocity = (0, 0)
+        self.velocity = np.array([0, 0])
         self.parent = 0
         # self.static = static
 
+    def modify(self, velocity, angle):
+        self.velocity = np.array(velocity)
+        self.angle = float(angle)
+        self.shape.rotate(angle)
 
-    def step(self):
-        self.position += self.velocity
+    def update(self):
+        self.position += self.velocity * speed;
+        self.shape.move(self.velocity)
 
     def set_parent(self, parent):
         self.parent = parent
@@ -51,14 +87,14 @@ class Polygon:
     """Polygon class"""
 
     def __init__(self, anchor, vertices):
-        self.anchor = anchor
+        self.anchor = np.array(anchor, dtype=float)
         self.vertices = vertices
         self.angle = 0.0
 
     def rotate(self, angle):
         self.vertices -= self.anchor
         delta = angle - self.angle
-        self.angle = angle
+        # self.angle = angle
         s = math.sin(delta)
         c = math.cos(delta)
         for i in np.arange(self.vertices.shape[0]):
@@ -68,6 +104,10 @@ class Polygon:
                                 x * s + y * c]
         self.vertices += self.anchor
         # return  0
+
+    def move(self, delta):
+        self.vertices += delta
+        self.anchor += delta
 
     @staticmethod
     def circle(anchor, radius):

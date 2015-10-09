@@ -2,7 +2,6 @@ from flask import Flask
 from flask_sockets import Sockets
 import time
 
-
 # start_time = time.time()
 # time.time() - start_time)
 x = 250
