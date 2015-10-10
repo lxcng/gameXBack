@@ -1,6 +1,6 @@
 import numpy as np
 import math
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 class World:
@@ -14,7 +14,7 @@ class World:
 
     def add_child(self, child):
         self.dynamic.update({child.id, child})
-        child.set_parent(this)
+        child.set_parent(self)
 
     def del_child(self, id):
         self.dynamic.pop(id)
