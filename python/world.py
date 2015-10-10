@@ -13,6 +13,7 @@ class World:
         self.fps = 50
         self.time_offset = 1.0 / self.fps
         self.state = 0 #ready
+        self.deleted = []
         # self.speed = 7.0;
         # self.static = {}
 
@@ -21,7 +22,12 @@ class World:
         child.set_parent(self)
 
     def del_child(self, id):
+        # self.deleted.append(id)
+        self.childs[id].modify([0, 0], 9.999)
+        # self.childs[id].position = np.array([-228228.0, -322322.0], dtype=float)
+        # threading.Timer(, 1.0)
         self.childs.pop(id)
+
 
     def step(self):
         for key in self.childs:
