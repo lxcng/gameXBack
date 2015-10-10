@@ -38,7 +38,6 @@ def echo_socket(ws):
         elif message[0] == '~':
             id = message[1:]
             world.del_child(id)
-            # ws.send
 
 
 
