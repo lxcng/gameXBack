@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/gameXBack.iml" filepath="$PROJECT_DIR$/.idea/gameXBack.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/_back.iml" filepath="$PROJECT_DIR$/.idea/_back.iml" />
     </modules>
   </component>
 </project>

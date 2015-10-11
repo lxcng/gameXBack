@@ -1,6 +1,8 @@
 import numpy as np
 import math
 import threading
+import gevent
+# import redis
 
 speed = 7.0;
 
@@ -13,19 +15,12 @@ class World:
         self.fps = 50
         self.time_offset = 1.0 / self.fps
         self.state = 0 #ready
-        self.deleted = []
-        # self.speed = 7.0;
-        # self.static = {}
 
     def add_child(self, child):
         self.childs[child.id] = child
         child.set_parent(self)
 
     def del_child(self, id):
-        # self.deleted.append(id)
-        self.childs[id].modify([0, 0], 9.999)
-        # self.childs[id].position = np.array([-228228.0, -322322.0], dtype=float)
-        # threading.Timer(, 1.0)
         self.childs.pop(id)
 
 
@@ -48,7 +43,22 @@ class World:
     def run(self):
         if self.state == 1:
             threading.Timer(self.time_offset, self.run).start()
-        self.step()
+        self.step()#
+
+
+    # def start(self):
+    #     if self.state == 0:
+    #         self.state = 1
+    #         tred = gevent.spawn(self.loop)
+    #
+    # def loop(self):
+    #     while self.state == 1:
+    #         gevent.spawn(self.step)
+    #         gevent.sleep(self.time_offset)
+    #
+    # def abort(self):
+    #     if self.state == 1:
+    #         self.state = 0
 
     def modify_child(self, id, velocity, angle):
         self.childs[id].modify(velocity, angle)
@@ -67,10 +77,11 @@ class World:
 class Body:
     """Body class"""
 
-    def __init__(self, id, shape, position): #, static):
+    def __init__(self, id, shape, position, typ):
         self.id = id
         self.shape = shape
         self.position = np.array(position, dtype=float)
+        self.typ = typ
         self.angle = 0.0
         self.velocity = np.array([0, 0])
         self.parent = 0
@@ -95,6 +106,7 @@ class Polygon:
     def __init__(self, anchor, vertices):
         self.anchor = np.array(anchor, dtype=float)
         self.vertices = vertices
+        self.bounds = [0, 0, 0, 0]
         self.angle = 0.0
 
     def rotate(self, angle):
@@ -114,31 +126,16 @@ class Polygon:
     def move(self, delta):
         self.vertices += delta
         self.anchor += delta
+        self.bounds[0] += delta[0]
+        self.bounds[1] += delta[1]
 
     @staticmethod
     def circle(anchor, radius):
-        v = np.empty((16, 2))
-        v[0] = [radius, 0]
-        v[4] = [v[0, 1], v[0, 0]]
-        v[8] = [-v[0, 0], v[0, 1]]
-        v[12] = [v[0, 1], -v[0, 0]]
-
-        v[1] = [radius * math.cos(math.pi / 8), radius * math.sin(math.pi / 8)]
-        v[3] = [v[1, 1], v[1, 0]]
-        v[5] = [-v[1, 1], v[1, 0]]
-        v[7] = [-v[1, 0], v[1, 1]]
-        v[9] = [-v[1, 0], -v[1, 1]]
-        v[11] = [-v[1, 1], -v[1, 0]]
-        v[13] = [v[1, 1], -v[1, 0]]
-        v[15] = [v[1, 0], -v[1, 1]]
-
-        v[2] = [radius * math.cos(math.pi / 4), radius * math.sin(math.pi / 4)]
-        v[6] = [-v[2, 0], v[2, 1]]
-        v[10] = [-v[2, 0], -v[2, 1]]
-        v[14] = [v[2, 0], -v[2, 1]]
+        v = np.array([radius])
 
         v += anchor
         c = Polygon(anchor, v)
+        c.bounds = [anchor[0] - radius, anchor[1] - radius, radius * 2, radius * 2]
         return c
 
     @staticmethod
@@ -147,4 +144,5 @@ class Polygon:
                       [-width / 2.0, -height / 2.0], [width / 2.0, -height / 2.0]])
         v += anchor
         r = Polygon(anchor, v)
+        r.bounds = [anchor[0], anchor[1], width, height]
         return r

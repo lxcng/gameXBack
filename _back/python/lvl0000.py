@@ -1,15 +1,15 @@
 from world import World, Body, Polygon
 import threading
 import time
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import traceback
 
 a = World()
-a.add_child(Body('1', Polygon.circle([0,0], 1),[0,0]))
-a.add_child(Body('2', Polygon.circle([0,0], 1),[0,0]))
-a.add_child(Body('3', Polygon.circle([0,0], 1),[0,0]))
-a.add_child(Body('4', Polygon.circle([0,0], 1),[0,0]))
-a.add_child(Body('5', Polygon.circle([0,0], 1),[0,0]))
+a.add_child(Body('1', Polygon.circle([0,0], 1),[0,0],'s'))
+a.add_child(Body('2', Polygon.circle([0,0], 1),[0,0],'s'))
+a.add_child(Body('3', Polygon.circle([0,0], 1),[0,0],'s'))
+a.add_child(Body('4', Polygon.circle([0,0], 1),[0,0],'s'))
+a.add_child(Body('5', Polygon.circle([0,0], 1),[0,0],'s'))
 
 a.del_child('3')
 # a.childs['1'].velocity = [0.01, 0.0]
