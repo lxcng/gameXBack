@@ -7,7 +7,7 @@ import threading
 import gevent
 from gevent import Greenlet
 
-
+# sozdaem mir
 world = World()
 world.start();
 # world.add_child(Body('bubiga', Polygon.circle([0,0], 1),[0,0]))
@@ -22,27 +22,20 @@ client_sockets = {}
 def echo_socket(ws):
     global i
 
+    # jdem I message ot clienta
     while True:
         message = ws.receive()
         if message[0] == '#':
             id = message[1:]
             # p = [random.randint(0, 500), random.randint(0, 500)]
-            p = [0.0, 0.0]
+            p = [0.0, 0.0]  #sozdaem new body
             world.add_child(Body(id, Polygon.rectangle(p, 10, 10), p, 'p'))
             client_sockets[id] = ws
             ws.send('ready')
             break
 
     while True:
-        # ws.send(world.world_state())
-        #
-        # if i < 3:
-        #     # threading.Timer(ws.send(world.world_state()), 0.02).start()
-        #     threading.Timer(send_updates(), 0.02).start()
-        #     i += 1
-        # else:
-        #     i -= 1
-
+        # slushaem controlsy
         message = ws.receive()
         if message[0] == '*':
             control_body(message)
@@ -69,8 +62,12 @@ def echo_socket(ws):
 
 def send_updates():
     up = world.world_state()
-    for ws in client_sockets.values():
-        ws.send(up)
+    for ws in client_sockets.keys():
+        try:
+            client_sockets.get(ws).send(up)
+        except Exception:
+            client_sockets.get(ws).close()
+            client_sockets.pop(ws)
 
 
 def start_updates():
@@ -78,9 +75,8 @@ def start_updates():
         gevent.spawn(send_updates)
         gevent.sleep(0.02)
 
-
+# tred na updeity clientam
 gevent.spawn(start_updates)
-
 
 def control_body(message):
     temp = message.split('*')
@@ -89,11 +85,12 @@ def control_body(message):
     S = temp[2][1] == 't'
     A = temp[2][2] == 't'
     D = temp[2][3] == 't'
-    angle = float(temp[2][4:]) / 1000
+    C = temp[2][4] == 't'
+    angle = float(temp[2][5:]) / 1000
     xmove = A * -1.0 + D * 1.0
     ymove = W * -1.0 + S * 1.0
     world.modify_child(id, [xmove/ (math.sqrt(2), 1.0) [ymove == 0.0],
-                            ymove/ (math.sqrt(2), 1.0) [xmove == 0.0]], angle)
+                            ymove/ (math.sqrt(2), 1.0) [xmove == 0.0]], angle, C)
 
 
 @app.route('/')

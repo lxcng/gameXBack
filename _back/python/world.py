@@ -2,9 +2,11 @@ import numpy as np
 import math
 import threading
 import gevent
+import time
 # import redis
 
 speed = 7.0;
+bulletspeed = 5.0
 
 
 class World:
@@ -23,7 +25,6 @@ class World:
     def del_child(self, id):
         self.childs.pop(id)
 
-
     def step(self):
         for key in self.childs:
             self.childs[key].update()
@@ -34,34 +35,21 @@ class World:
     def start(self):
         if self.state == 0:
             self.state = 1
-            self.run()
+            gevent.spawn(self.run)
 
     def abort(self):
         if self.state == 1:
             self.state = 0
 
     def run(self):
-        if self.state == 1:
-            threading.Timer(self.time_offset, self.run).start()
-        self.step()#
+        while self.state == 1:
+            gevent.spawn(self.step)
+            gevent.sleep(self.time_offset)
 
-
-    # def start(self):
-    #     if self.state == 0:
-    #         self.state = 1
-    #         tred = gevent.spawn(self.loop)
-    #
-    # def loop(self):
-    #     while self.state == 1:
-    #         gevent.spawn(self.step)
-    #         gevent.sleep(self.time_offset)
-    #
-    # def abort(self):
-    #     if self.state == 1:
-    #         self.state = 0
-
-    def modify_child(self, id, velocity, angle):
+    def modify_child(self, id, velocity, angle, click):
         self.childs[id].modify(velocity, angle)
+        if click:
+            self.childs[id].fire()
 
     def world_state(self):
         message = ''
@@ -98,6 +86,12 @@ class Body:
 
     def set_parent(self, parent):
         self.parent = parent
+
+    def fire(self):
+        bullet = Body('bullet_' + str(time.time()), Polygon.rectangle(self.position, 0.1, 0.1), self.position, 'r')
+        bullet.modify([math.cos(self.angle) * bulletspeed, -math.sin(self.angle) * bulletspeed], self.angle)
+        # self.angle = 0.0
+        self.parent.add_child(bullet)
 
 
 class Polygon:
