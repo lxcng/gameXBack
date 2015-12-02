@@ -83,7 +83,11 @@ class Quadtree:
             res = []
             for i in index:
                 res += self.nodes[i].retrieve(obj)
-            res.remove(obj)
+            res = list(set(res))
+            # try:
+            #     res.remove(obj)
+            # except Exception:
+            #     pass
             return res
 
         return self.objects
