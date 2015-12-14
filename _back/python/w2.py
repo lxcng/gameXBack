@@ -32,11 +32,11 @@ class World:
 
     def add_player(self, id, position):
         fixtureDef = b2FixtureDef(shape=b2CircleShape(pos=b2Vec2(0.0, 0.0), radius=0.2), density=1.0, groupIndex=1)
-        body = self.world.CreateDynamicBody(position=position, fixtures=fixtureDef, userData=Data(id, 'player'))
+        body = self.world.CreateDynamicBody(position=position, fixtures=fixtureDef, userData=Data(id, 'player'), fixedRotation=True)
         self.childs[id] = body
 
     def add_wall(self, pos, rect):
-        fixtureDef = b2FixtureDef(shape=b2PolygonShape(box=rect, pos=b2Vec2(0.0, 0.0)), density=0.0, groupIndex=2)
+        fixtureDef = b2FixtureDef(shape=b2PolygonShape(box=rect, pos=b2Vec2(0.0, 0.0)), density=0.0, groupIndex=-2)
         body = self.world.CreateStaticBody(position=pos, fixtures=fixtureDef, userData=Data(id, 'wall'))
         self.childs['wall_' + str(self.wall_count)] = body
         self.wall_count += 1
@@ -61,7 +61,7 @@ class World:
 
 
     def add_door(self, id, pos, rect, orientation):
-        fixtureDef = b2FixtureDef(shape=b2PolygonShape(box=rect, pos=b2Vec2(0.0, 0.0)), density=2.0, groupIndex=4)
+        fixtureDef = b2FixtureDef(shape=b2PolygonShape(box=rect, pos=b2Vec2(0.0, 0.0)), density=2.0, groupIndex=-2)
         body0 = self.world.CreateDynamicBody(position=pos, fixtures=fixtureDef, userData=Data(id, 'door'))
 
         if orientation == 0:
@@ -76,7 +76,7 @@ class World:
         elif orientation == 3:
             pos = (pos[0], pos[1] - rect[0] + rect[1])
             rect = (rect[0], rect[0])
-        fixtureDef = b2FixtureDef(shape=b2PolygonShape(box=rect, pos=b2Vec2(0.0, 0.0)), density=2.0, groupIndex=4)
+        fixtureDef = b2FixtureDef(shape=b2PolygonShape(box=rect, pos=b2Vec2(0.0, 0.0)), density=2.0, groupIndex=-2)
         body1 = self.world.CreateBody(position=pos, fixtures=fixtureDef, userData=Data(id, 'door'))
         joint = self.world.CreateRevoluteJoint(bodyA=body0, bodyB=body1, anchor=body1.worldCenter)
         self.childs[id] = body0
@@ -149,6 +149,8 @@ class World:
             message += '^' + str(int(body.position.x * pixels_per_meter))
             message += '^' + str(int(body.position.y * pixels_per_meter))
             message += '^' + str(body.angle)
+            if body.userData.type == 0:
+                print 'b', body.angle, body.angularVelocity
             # message += '^' + str(int(math.degrees(body.angle)))
         return message
 

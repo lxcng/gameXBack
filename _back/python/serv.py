@@ -71,6 +71,7 @@ def echo_socket(ws):
 
 def send_updates():
     up = world.world_state()
+    # print up
     for ws in client_sockets.keys():
         try:
             client_sockets.get(ws).send(up)
@@ -96,8 +97,10 @@ def control_body(message):
     A = temp[2][2] == 't'
     D = temp[2][3] == 't'
     C = temp[2][4] == 't'
-    # angle = math.radians(-int(temp[2][5:]))
+    # deg = -int(temp[2][5:])
+    # angle1 = math.radians(deg)
     angle = -float(temp[2][5:])
+    print 'c', angle
     xmove = A * -1.0 + D * 1.0
     ymove = W * -1.0 + S * 1.0
     world.modify_child(id, [xmove/(math.sqrt(2), 1.0)[ymove == 0.0],
