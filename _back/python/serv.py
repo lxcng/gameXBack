@@ -17,7 +17,7 @@ world.add_wall((0.0, 281.0/200.0), (256/200.0, 25/200.0))
 
 world.add_wall((281.0/200.0, 178.0/200.0), (25/200.0, 128/200.0))
 world.add_wall((281.0/200.0, -178.0/200.0), (25/200.0, 128/200.0))
-world.add_door('door1', (281.0/200.0, 5.0/200.0), (5.0/200.0, 45.0/200.0), 3)
+world.add_door('door1', (281.0/200.0, 0.0/200.0), (5.0/200.0, 50.0/200.0), 3)
 
 
 
@@ -36,8 +36,8 @@ def echo_socket(ws):
         message = ws.receive()
         if message[0] == '#':
             id = message[1:]
-            # p = [random.randint(0, 500), random.randint(0, 500)]
-            p = (0.0, 0.0) #sozdaem new body
+            p = ((random.randint(0, 500) - 250)/200.0, (random.randint(0, 500) - 250)/200.0)
+            # p = (0.0, 0.0) #sozdaem new body
             world.add_player(id, p)
             client_sockets[id] = ws
             ws.send('ready')
@@ -100,7 +100,7 @@ def control_body(message):
     # deg = -int(temp[2][5:])
     # angle1 = math.radians(deg)
     angle = -float(temp[2][5:])
-    print 'c', angle
+    # print 'c', angle
     xmove = A * -1.0 + D * 1.0
     ymove = W * -1.0 + S * 1.0
     world.modify_child(id, [xmove/(math.sqrt(2), 1.0)[ymove == 0.0],

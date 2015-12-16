@@ -1,6 +1,9 @@
 from w2 import *
 import gevent
+import random, time
 
+
+p = ((random.randint(0, 500) - 250)/200.0, (random.randint(0, 500) - 250)/200.0)
 
 w = World()
 
@@ -12,7 +15,7 @@ w.add_player('112', (0.0, 0.0))
 
 # print w.world_state()
 # w.start()
-w.add_door('door1', (0.5, 0), (0.05, 0.4), 1)
+w.add_door('door1', (0.5, 0), (0.05, 0.4), 3)
 w.modify_child('112', (1.0, 0.0), 0, False)
 # print w.childs['112'].userData.id
 # print w.world_state()
