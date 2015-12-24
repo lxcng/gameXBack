@@ -6,7 +6,7 @@ import math
 import gevent
 import time
 import random
-from quadtree import Quadtree
+# from quadtree import Quadtree
 # import redis
 
 speed = 1.0
@@ -29,6 +29,7 @@ class World:
         self.pos_iters = 2
         self.state = 0 #ready
         self.wall_count = 0;
+        self.yaml = ''
         # self.tree = Quadtree(0, [-500, -500, 1000, 1000])
 
     def add_player(self, id, position):
@@ -38,8 +39,9 @@ class World:
 
     def add_wall(self, pos, rect):
         fixtureDef = b2FixtureDef(shape=b2PolygonShape(box=rect, pos=b2Vec2(0.0, 0.0)), density=0.0, groupIndex=-2)
+        id = 'wall_' + str(self.wall_count)
         body = self.world.CreateStaticBody(position=pos, fixtures=fixtureDef, userData=Data(id, 'wall'))
-        self.childs['wall_' + str(self.wall_count)] = body
+        self.childs[id] = body
         self.wall_count += 1
 
     def add_bullet(self, id, parent, dmg):
@@ -47,14 +49,14 @@ class World:
         pos.x += (0.004 + parent.fixtures[0].shape.radius + 0.001) * math.cos(parent.angle)
         pos.y += (0.004 + parent.fixtures[0].shape.radius + 0.001) * math.sin(parent.angle)
 
-        fixtureDef = b2FixtureDef(shape=b2CircleShape(pos=b2Vec2(0.0, 0.0), radius=0.004), density=0.0, groupIndex=3)
+        fixtureDef = b2FixtureDef(shape=b2CircleShape(pos=b2Vec2(0.0, 0.0), radius=0.004), density=0.0, groupIndex=-3)
         bullet_id = 'bullet_' + str(id) + '_' + str(time.time())
         body = self.world.CreateDynamicBody(position=pos, bullet=True, fixtures=fixtureDef, angle=parent.angle, userData=Data(bullet_id, 'bullet'))
         v = b2Vec2(math.cos(body.angle), math.sin(body.angle))
         v *= bulletspeed
         body.linearVelocity = v
         self.childs[bullet_id] = body
-        gevent.spawn(self.bullet_lifespan, bullet_id)
+        # gevent.spawn(self.bullet_lifespan, bullet_id)
 
     def bullet_lifespan(self, b):
         gevent.sleep(10.0)
@@ -62,8 +64,9 @@ class World:
 
     def killed(self, id):
         # print id
+        print 'killed: ', id
         self.del_child(id)
-        self.add_player(id, ((random.randint(0, 500) - 250)/200.0, (random.randint(0, 500) - 250)/200.0))
+        # self.add_player(id, ((random.randint(0, 500) - 250)/200.0, (random.randint(0, 500) - 250)/200.0))
 
 
     def add_door(self, id, pos, rect, orientation):
@@ -133,6 +136,8 @@ class World:
 
     def modify_child(self, id, velocity, angle, click):
         pass
+        if id not in self.childs:
+            return
         body = self.childs[id]
 
         # f = body.GetWorldVector(localVector=velocity)
@@ -174,9 +179,10 @@ class World:
             body = self.childs[key]
             message += str(key)
             # message += ' ' + str(body.type) + ('', 'b')[body.bullet]
-            message += ' ' + str(body.position.x)
-            message += ' ' + str(body.position.y)
-            message += ' ' + str(body.angle) + '\n'
+            message += ' t:' + str(body.userData.type)
+            message += ' x:' + str(body.position.x)
+            message += ' y:' + str(body.position.y)
+            message += ' a:' + str(body.angle) + '\n'
         return message
 
 
@@ -199,26 +205,39 @@ class myContactListener(b2ContactListener):
         self.shot_points = []
 
     def BeginContact(self, contact):
+        # print 'begin contact'
         pass
 
     def EndContact(self, contact):
+        # print 'end contact'
         pass
 
     def PreSolve(self, contact, oldManifold):
+        bodyA = contact.fixtureA.body
+        bodyB = contact.fixtureB.body
+        # print 'pre-solve', bodyA.userData.id, bodyB.userData.id
+
         worldManifold = contact.worldManifold
         state1, state2 = b2GetPointStates(oldManifold, contact.manifold)
         if state2[0] == b2_addState:
+            b = False
             bodyA = contact.fixtureA.body
             bodyB = contact.fixtureB.body
             if bodyA.bullet or bodyB.bullet:
                 self.shot_points.append(contact)
+                b = True
             if bodyA.userData.type == 3 or bodyB.userData.type == 3:
+                if b:
+                    contact.enabled = False
                 pass
-                print 'd'
+                # print 'd'
             if len(bodyA.joints) != 0 or len(bodyB.joints) != 0:
                 pass
 
     def PostSolve(self, contact, impulse):
+        bodyA = contact.fixtureA.body
+        bodyB = contact.fixtureB.body
+        # print 'post solve', bodyA.userData.id, bodyB.userData.id
         pass
 
     def clear(self):
