@@ -1,15 +1,15 @@
 import yaml
 
 
-def parse(w, n):
+def parse(world, n):
     f = yaml.load(n)
     walls = f['walls']
     for wall in walls:
-        parse_wall(w, wall)
+        parse_wall(world, wall)
 
     doors = f['doors']
     for door in doors:
-        parse_door(w, door)
+        parse_door(world, door)
 
 
 def parse_wall(w, d):

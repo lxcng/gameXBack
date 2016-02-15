@@ -8,33 +8,32 @@ p = ((random.randint(0, 500) - 250)/200.0, (random.randint(0, 500) - 250)/200.0)
 
 w = World()
 
-parser.parse(w, 'doc.yaml')
-# w.add_player('112', (0.0, 0.0))
+
+w.yaml = file('levels/big.yaml', 'r').read()
+parser.parse(w, w.yaml)
+
+# w.add_player('112', (0.25, 0.0))
+# w.add_player('112', (0.2, 0.35))
+w.add_player('112', (150.0 / 200.0, -100.0 / 200.0))
+
+# w.add_player('113', (0.85, 0.6))
+# w.add_player('113', (0.85, 0.0))
+
 # w.add_door('door1', (0.5, 0), (0.05, 0.4), 3)
+
 # w.modify_child('112', (1.0, 0.0), 0, False)
-
-# f = yaml.load(file('doc.yaml', 'r'))
-
-# yaml.dump({'name': '112', 'id': '228'}, file('doc.yaml', 'w'))
-
-# w.add_wall((5, 0.0), (0.5, 10.0))
-
-# w.modify_child('112', (1.0, 0.0), 0.0, False)
+w.modify_child('112', (0.0, 0.0), math.pi / 4, True)
 
 
-# print w.world_state()
-# w.start()
-# print w.childs['112'].userData.id
-# print w.world_state()
+
+
 for i in range(100):
-    # if i == 5:
-    #     w.modify_child('112', (1.0, 0.0), 1.57, True)
+    # w.modify_child('112', (-1.0, 0.0), 0, False)
+    if i == 25:
+        pass
+    #     w.modify_child('113', (0.0, -1.0), 1.57, False)
     w.step()
+    print i
     print w.world_state_deb()
     gevent.sleep(0.02)
 
-    # print len(w.childs)
-    # print i, '\t', w.childs['112'].linearVelocity.x, w.childs['112'].linearVelocity.y #, w.childs['112'].angle
-    # print i, '\t', w.childs['door1'].angularVelocity
-pass
-pass
