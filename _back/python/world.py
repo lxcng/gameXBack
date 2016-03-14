@@ -1,49 +1,77 @@
 from Box2D import *
+# import
 
-import numpy as np
 import math
-# import threading
 import gevent
-import time
 import random
-# from quadtree import Quadtree
-# import redis
+import Queue
+from struct import pack
 
 speed = 1.0
 bulletspeed = 2.0
 pixels_per_meter = 200
-#
-# speed = 1.0;
-# bulletspeed = 1.0
 
 
 class World:
     """World class"""
 
     def __init__(self):
-        self.childs = {}
         self.world = b2World(gravity=(0, 0), doSleep=True, contactListener=myContactListener()) #!!!
         self.fps = 50
         self.timeStep = 1.0 / self.fps
         self.vel_iters = 6
         self.pos_iters = 2
-        self.state = 0 #ready
-        self.wall_count = 0;
-        self.yaml = ''
-        self.bullet_seed = 0
-        # self.tree = Quadtree(0, [-500, -500, 1000, 1000])
 
-    def add_player(self, id, position):
+        self.state = 0 #ready
+        self.yaml = ''
+
+        self.wall_seed = 0
+        self.door_seed = 0
+        self.spawn_seed = 0
+        self.bullet_seed = 0
+        self.id_seed = 0
+
+        self.ids = Queue.Queue()
+        self.ids.maxsize = 2 ** 10
+        for i in range(0, 2 ** 10):
+            self.ids.put(i)
+
+        self.childs = {}
+        self.player_spawns = []
+        self.item_spawns = []
+
+    def gen_id(self, type):
+        id = 0
+        if type == 'player':
+            id += 0
+        elif type == 'wall':
+            id += 1
+        elif type == 'bullet':
+            id += 2
+        elif type == 'door':
+            id += 3
+        elif type == 'spawn':
+            id += 4
+        id <<= 10
+        # print bin(id)
+        id += self.ids.get()
+        # print bin(id)
+        return id
+
+    def add_player(self, name, position):
         fixtureDef = b2FixtureDef(shape=b2CircleShape(pos=b2Vec2(0.0, 0.0), radius=0.2), density=1.0, groupIndex=1)
-        body = self.world.CreateDynamicBody(position=position, fixtures=fixtureDef, userData=Data(id=id, type='player'), fixedRotation=True)
+        id = self.gen_id('player')
+        body = self.world.CreateDynamicBody(position=position, fixtures=fixtureDef, userData=Data(id=id, type='player', name=name), fixedRotation=True)
         self.childs[id] = body
+        return id
 
     def add_wall(self, pos, rect):
         fixtureDef = b2FixtureDef(shape=b2PolygonShape(box=rect, pos=b2Vec2(0.0, 0.0)), density=0.0, groupIndex=-2)
-        id = 'wall_' + str(self.wall_count)
+        id = self.gen_id('wall')
+        # self.wall_seed += 1
         body = self.world.CreateStaticBody(position=pos, fixtures=fixtureDef, userData=Data(id=id, type='wall'))
-        self.childs[id] = body
-        self.wall_count += 1
+        # self.childs[id] = body
+        return id
 
     def add_bullet(self, id, parent, dmg):
         pos = parent.position.copy()
@@ -52,28 +80,29 @@ class World:
 
         fixtureDef = b2FixtureDef(shape=b2CircleShape(pos=b2Vec2(0.0, 0.0), radius=0.004), density=0.0, groupIndex=-3)
         # bullet_id =  str(id) + '_' + str(time.time())
-        bullet_id = 'bullet_' + str(self.bullet_seed)
-        self.bullet_seed += 1
+        bullet_id = self.gen_id('bullet')
+        # self.bullet_seed += 1
         body = self.world.CreateDynamicBody(position=pos, bullet=True, fixtures=fixtureDef, angle=parent.angle, userData=Data(id=bullet_id, type='bullet', parent=parent, damage=dmg))
         v = b2Vec2(math.cos(body.angle), math.sin(body.angle))
         v *= bulletspeed
         body.linearVelocity = v
         self.childs[bullet_id] = body
-        # gevent.spawn(self.bullet_lifespan, bullet_id)
+        return bullet_id
 
-    # def bullet_lifespan(self, b):
-    #     gevent.sleep(10.0)
-    #     self.del_child(b)
+    def add_spawn(self, pos, type):
+        if type == 'player':
+            id = self.gen_id('spawn')
+            data = Data(id=id, type='spawn', position=pos)
+            self.player_spawns.append(data)
+            return id
+        if type == 'item':
+            pass
+        pass
 
-    def killed(self, id, bullet_id):
-        # print id
-        print 'killed: ', id
-        self.childs[bullet_id].userData.parent.userData.kills +=1
-        self.del_child(id)
-        # self.add_player(id, ((random.randint(0, 500) - 250)/200.0, (random.randint(0, 500) - 250)/200.0))
 
-
-    def add_door(self, id, pos, rect, orientation):
+    def add_door(self, pos, rect, orientation):
+        id = self.gen_id('door')
+        # self.door_seed += 1
         fixtureDef = b2FixtureDef(shape=b2PolygonShape(box=rect, pos=b2Vec2(0.0, 0.0)), density=2.0, groupIndex=-2)
         body0 = self.world.CreateDynamicBody(position=pos, fixtures=fixtureDef, userData=Data(id=id, type='door'))
 
@@ -93,11 +122,30 @@ class World:
         # body1 = self.world.CreateBody(position=pos, fixtures=fixtureDef, userData=Data(id=id, type='door'))
         body1 = self.world.CreateBody(position=pos, userData=Data(id=id, type='door'))
         joint = self.world.CreateRevoluteJoint(bodyA=body0, bodyB=body1, anchor=body1.worldCenter, enableLimit=True, lowerAngle=math.pi*-0.5, upperAngle=math.pi*0.5)
-
         self.childs[id] = body0
+        return id
+
+
+    def killed(self, id, bullet_id):
+        # print id
+        print ('killed: ', id)
+        self.childs[bullet_id].userData.parent.userData.kills += 1
+        self.del_child(id)
+        # self.add_player(id, ((random.randint(0, 500) - 250)/200.0, (random.randint(0, 500) - 250)/200.0))
+        self.spawn(id)
+
+    def spawn(self, id):
+        r = random.randint(0, len(self.player_spawns) - 1)
+
+        self.add_player(id, self.player_spawns[r].position)
+
+        pass
 
     def del_child(self, id):
         self.world.DestroyBody(self.childs.pop(id))
+        self.ids.put(id)
+
+    # a = 0
 
     def step(self):
         self.world.Step(self.timeStep, self.vel_iters, self.pos_iters)
@@ -107,6 +155,11 @@ class World:
 
         self.world.contactListener.clear()
         self.world.ClearForces()
+        # if World.a == 50:
+        #     print self.world_state_deb()
+        #     World.a = 0
+        # else:
+        #     World.a += 1
 
     def process_doors(self):
         for door in self.world.contactListener.doors:
@@ -123,19 +176,15 @@ class World:
                 self.world.contactListener.doors.remove(door)
 
     def process_bullets(self):
-        # for hit in self.world.contactListener.hits:
-        for bullet, body in [(hit[0], hit[1]) for hit in self.world.contactListener.hits]:
+        if self.world.contactListener.hits != []:
+            for bullet, body in [(hit[0], hit[1]) for hit in self.world.contactListener.hits]:
+                if body.userData.type == 0:
+                    self.killed(body.userData.id, bullet.userData.id)
+                elif 0:
+                    pass
 
-            # if hit[1].userData.type == 0:
-            #     self.killed(hit[1].userData.id, hit[0].userData.id)
-            # elif 0:
-            #     pass
-            if body.userData.type == 0:
-                self.killed(body.userData.id, bullet.userData.id)
-            elif 0:
-                pass
-        for bullet in self.world.contactListener.bullets:
-            self.del_child(bullet.userData.id)
+            for bullet in self.world.contactListener.bullets:
+                self.del_child(bullet.userData.id)
 
     def start(self):
         if self.state == 0:
@@ -156,19 +205,11 @@ class World:
         if id not in self.childs:
             return
         body = self.childs[id]
-
-        # f = body.GetWorldVector(localVector=velocity)
-        # if body.fixtures[0].filterData.groupIndex == 1:
-        #     f *= speed * 50
         v = b2Vec2(velocity)
         if body.fixtures[0].filterData.groupIndex == 1:
             v *= speed
-        # p = body.GetWorldPoint(localPoint=(0.0, 0.0))
-        # body.awake = True
-
         body.linearVelocity = v
         body.angle = angle
-        # body.ApplyForce(force=f, point=p, wake=True)
         if click:
             self.add_bullet(id, body, 0.0)
 
@@ -183,16 +224,81 @@ class World:
             message += '^' + str(body.angle)
         return message
 
+    def rad_to_deg(self, r):
+        if r < 0:
+            r = b2_pi - r
+        d = r * 180 / b2_pi
+        return int(d)
+
+    def deg_to_rad(self, d):
+        r = d * b2_pi / 180
+        return r
+
+    def world_state_ec(self, id):
+        message = ''
+        message += self.hex_state(id)
+        visible = list(self.childs.keys())
+        visible.remove(id)
+        for key in visible:
+            message += self.hex_state(key)
+        return message
+
+    def hex_state(self, id):
+        body = self.childs[id]
+        i_h = body.userData.id
+        x_h = int(body.position.x * pixels_per_meter)
+        y_h= int(body.position.y * pixels_per_meter)
+        a_h = self.rad_to_deg(body.angle)
+
+        state = ''
+        deb = ''
+
+        f = (i_h >> 7) & 127
+        s = i_h & 127
+        # print bin(i_h), f, bin(f), s, bin(s)
+        deb += str(f) + ' ' + str(s) + ' '
+        state += chr(f) + chr(s)
+
+        f = (x_h >> 7) & 127
+        s = x_h & 127
+        # print bin(x_h), f, bin(f), s, bin(s)
+        state += chr(f) + chr(s)
+        deb += str(f) + ' ' + str(s) + ' '
+
+        f = (y_h >> 7) & 127
+        s = y_h & 127
+        # print bin(y_h), f, bin(f), s, bin(s)
+        state += chr(f) + chr(s)
+        deb += str(f) + ' ' + str(s) + ' '
+
+        f = (a_h >> 7) & 127
+        s = a_h & 127
+        # print bin(a_h), f, bin(f), s, bin(s)
+        state += chr(f) + chr(s)
+        deb += str(f) + ' ' + str(s)
+        print (deb)
+        # state.encode('utf-8')
+
+        # print hex(ord(id_h[0])), hex(ord(id_h[1])), '\t', body.userData.id
+        # print hex(ord(x_h[0])), hex(ord(x_h[1])), '\t', int(body.position.x * pixels_per_meter)
+        # print hex(ord(y_h[0])), hex(ord(y_h[1])), '\t', int(body.position.y * pixels_per_meter)
+        # print hex(ord(a_h[0])), hex(ord(a_h[1])), '\t', self.rad_to_deg(body.angle)
+
+        # print int(hex(ord(id_h[0])), base=16), int(hex(ord(id_h[1])), base=16)
+        # print chr(int(hex(ord(id_h[0])), base=16)), chr(int(hex(ord(id_h[1])), base=16))
+        # print chr(body.userData.id << 8)
+
+        return state
 
     def world_state_deb(self):
         message = ''
         for key in self.childs:
             body = self.childs[key]
             message += str(key)
-            message += ' t:' + str(body.userData.type)
-            message += ' x:' + str(body.position.x)
-            message += ' y:' + str(body.position.y)
-            message += ' a:' + str(body.angle) + '\n'
+            # message += ' t:' + str(body.userData.type)
+            message += ' x:' + str(int(body.position.x * pixels_per_meter))
+            message += ' y:' + str(int(body.position.y * pixels_per_meter))
+            message += ' a:' + str(self.rad_to_deg(body.angle)) + '\n'
         return message
 
 
@@ -201,20 +307,25 @@ class Data:
     types = {'player': 0,
              'wall': 1,
              'bullet': 2,
-             'door': 3}
+             'door': 3,
+             'spawn': 4}
 
     def __init__(self, **kwargs):
         self.id = kwargs['id']
         self.type = Data.types.get(kwargs['type'])
-        if self.type == 3:
-            self.state = 0
-            self.angle = 0
-            self.locked = False
-        elif self.type == 0:
+        if self.type == 0:
             self.kills = 0
+            self.name = kwargs['name']
         elif self.type == 2:
             self.hit = 0
             self.damage = kwargs['damage']
+        elif self.type == 3:
+            self.state = 0
+            self.angle = 0
+            self.locked = False
+        elif self.type == 4:
+            self.position = kwargs['position']
+
         if 'parent' in kwargs:
             self.parent = kwargs['parent']
 
@@ -271,18 +382,18 @@ class myContactListener(b2ContactListener):
 
         state1, state2 = b2GetPointStates(oldManifold, contact.manifold)
 
-        if state2[0] == b2_addState:
-            if bullet != 0:
-                contact.enabled = False
-                # self.shot_points.append(contact)
-                if wall != 0:
-                    self.hits.append((bullet, wall))
-                elif body != 0:
-                    self.hits.append((bullet, body))
-                elif door != 0:
-                    self.hits.append((bullet, door))
-                if bullet not in self.bullets:
-                    self.bullets.append(bullet)
+        # if state2[0] == b2_addState:
+        if bullet != 0:
+            contact.enabled = False
+            # self.shot_points.append(contact)
+            if wall != 0:
+                self.hits.append((bullet, wall))
+            elif body != 0:
+                self.hits.append((bullet, body))
+            elif door != 0:
+                self.hits.append((bullet, door))
+            if bullet not in self.bullets:
+                self.bullets.append(bullet)
                 # b = True
         if door != 0:
             self.processDoor(door, contact, worldManifold)
@@ -291,7 +402,7 @@ class myContactListener(b2ContactListener):
             # print 'd'
             if contact.enabled:
                 if not door.userData.locked:
-                    print door.userData.id, 'go'
+                    print( door.userData.id, 'go')
                     self.doors.append(door)
                     door.joints[0].joint.motorEnabled = True
                     door.joints[0].joint.maxMotorTorque  = 10
@@ -300,44 +411,29 @@ class myContactListener(b2ContactListener):
 
                     if door.userData.state == 0:
                         d = self.direction(door, worldManifold.points[0])
-                        print '0 to ' + str(d)
+                        print ('0 to ' + str(d))
                         # if abs(d * math.pi / 2 + door.angle) <= math.pi / 2:
                         door.userData.state = d
                         door.userData.angle = d * math.pi / 2
                         door.joints[0].joint.motorSpeed = -d * math.pi
                     elif door.userData.state == 1:
-                        print '1 to 0'
+                        print ('1 to 0')
                         door.userData.state = 0
                         door.userData.angle = 0
                         door.joints[0].joint.motorSpeed = 1 * math.pi
                     elif door.userData.state == -1:
-                        print '-1 to 0'
+                        print ('-1 to 0')
                         door.userData.state = 0
                         door.userData.angle = 0
                         door.joints[0].joint.motorSpeed = -1 * math.pi
                         door.fixedRotation = False
-                    # print door.userData.angle
 
     def PostSolve(self, contact, impulse):
-        # bodyA = contact.fixtureA.body
-        # bodyB = contact.fixtureB.body
-        # door = 0
-        # body = 0
-        # if bodyA.userData.type == 3:
-        #     door = bodyA
-        #     body = bodyB
-        # elif bodyB.userData.type == 3:
-        #     door = bodyB
-        #     body = bodyA
-        # if door != 0:
-        #     pass
-        #     # door.angle = 0.0
-        # print 'post solve', bodyA.userData.id, bodyB.userData.id
         pass
 
     def clear(self):
-        # self.shot_points = []
         self.bullets = []
+        self.hits = []
 
     def direction(self, door, normal):
         c = door.joints[0].other.position
