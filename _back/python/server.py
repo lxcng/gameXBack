@@ -28,21 +28,35 @@ def echo_socket(ws):
     print('1')
     init_front(ws)
 
+const2in7 = 2 ** 7
+
+def bytes_to_int(a, b):
+    i = b << 8
+    i += a
+    if b & 128:
+        i -= 2 ** 16
+    print i, bin(b), bin(a)
+    return i
+
 
 def init_front(ws):
     while not ws.closed:
         message = ws.receive()
-        print ('m', message, type(message), len(message))
-        print (int.from_bytes(message[:2], byteorder='big', signed=True))
-        print (int.from_bytes(message[2:4], byteorder='big', signed=True))
-        # print (int.from_bytes(message[:2], byteorder='big', signed=True))
-        # print (int.from_bytes(message[:2], byteorder='big', signed=True))
-        # print message, len(message), getsizeof(message)
+        print 'm', message, type(message), len(message)
+        # a = message[1] << 8
+        # a += message[0]
+        # print a, bin(message[1]), bin(message[0])
+        # bytes_to_int(message[0], message[1])
+        # bytes_to_int(message[2], message[3])
+        # bytes_to_int(message[4], message[5])
+        # bytes_to_int(message[6], message[7])
+        # bytes_to_int(message[8], message[9])
+
         if message[0] == '#':
             id = message[1:]
             # ws.send(world.yaml)
-            ws.send([elem.encode("hex") for elem in world.yaml])
-            print ('yaml sent to: ', id)
+            ws.send(world.yaml)
+            print 'yaml sent to: ', id
             wait_for_front_init(ws, id)
             break
 
@@ -50,14 +64,14 @@ def init_front(ws):
 def wait_for_front_init(ws, id):
     while not ws.closed:
         message = ws.receive()
-        print ('m', message)
+        print 'm', message
         if message == 'ready':
             # p = ((random.randint(0, 500) - 250)/200.0, (random.randint(0, 500) - 250)/200.0)
             p = (0.0, 1.0) #sozdaem new body
             id = world.add_player(id, p)
             updater.client_sockets[id] = ws
             # print updater_.client_sockets.keys()
-            print ('connected: ', id)
+            print 'connected: ', id
             listen_socket(ws, id)
             break
 
@@ -76,7 +90,7 @@ def listen_socket(ws, id):
             # id = message[1:]
             world.del_child(id)
             updater.client_sockets.pop(id)
-            print ('disconnected: ', id)
+            print 'disconnected: ', id
             break
 
 
@@ -106,7 +120,7 @@ def hello_world():
         if b.userData.type == 0:
             s += '<li>' + b.userData.id + ' :\t' + str(b.userData.kills) + '</li>'
     s += '</body></html>'
-    print(s)
+    print s
     return "Hello, world!"
     # return ''.format(s)
 

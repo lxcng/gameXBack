@@ -5,6 +5,7 @@ import math
 import gevent
 import random
 import Queue
+import struct
 from struct import pack
 
 speed = 1.0
@@ -128,7 +129,7 @@ class World:
 
     def killed(self, id, bullet_id):
         # print id
-        print ('killed: ', id)
+        print 'killed: ', id
         self.childs[bullet_id].userData.parent.userData.kills += 1
         self.del_child(id)
         # self.add_player(id, ((random.randint(0, 500) - 250)/200.0, (random.randint(0, 500) - 250)/200.0))
@@ -225,8 +226,8 @@ class World:
         return message
 
     def rad_to_deg(self, r):
-        if r < 0:
-            r = b2_pi - r
+        # if r < 0:
+        #     r = b2_pi - r
         d = r * 180 / b2_pi
         return int(d)
 
@@ -234,61 +235,42 @@ class World:
         r = d * b2_pi / 180
         return r
 
+    # def world_state_ec(self, id):
+    #     message = bytearray(len(self.childs) * 8)
+    #     self.offset = 0
+    #     for key in self.childs.keys():
+    #         self.int_to_bytes(message, key)
+    #     return message
+
     def world_state_ec(self, id):
-        message = ''
-        message += self.hex_state(id)
+        message = bytearray(len(self.childs) * 8)
+        self.offset = 0
+        self.int_to_bytes(message, id)
         visible = list(self.childs.keys())
         visible.remove(id)
         for key in visible:
-            message += self.hex_state(key)
+            self.int_to_bytes(message, key)
         return message
 
-    def hex_state(self, id):
+    def int_to_bytes(self, blob, id):
         body = self.childs[id]
         i_h = body.userData.id
         x_h = int(body.position.x * pixels_per_meter)
-        y_h= int(body.position.y * pixels_per_meter)
+        y_h = int(body.position.y * pixels_per_meter)
         a_h = self.rad_to_deg(body.angle)
 
-        state = ''
+        struct.pack_into('<h', blob, self.offset, i_h)
+        struct.pack_into('<h', blob, self.offset + 2, x_h)
+        struct.pack_into('<h', blob, self.offset + 4, y_h)
+        struct.pack_into('<h', blob, self.offset + 6, a_h)
+
         deb = ''
 
-        f = (i_h >> 7) & 127
-        s = i_h & 127
-        # print bin(i_h), f, bin(f), s, bin(s)
-        deb += str(f) + ' ' + str(s) + ' '
-        state += chr(f) + chr(s)
-
-        f = (x_h >> 7) & 127
-        s = x_h & 127
-        # print bin(x_h), f, bin(f), s, bin(s)
-        state += chr(f) + chr(s)
-        deb += str(f) + ' ' + str(s) + ' '
-
-        f = (y_h >> 7) & 127
-        s = y_h & 127
-        # print bin(y_h), f, bin(f), s, bin(s)
-        state += chr(f) + chr(s)
-        deb += str(f) + ' ' + str(s) + ' '
-
-        f = (a_h >> 7) & 127
-        s = a_h & 127
-        # print bin(a_h), f, bin(f), s, bin(s)
-        state += chr(f) + chr(s)
-        deb += str(f) + ' ' + str(s)
-        print (deb)
-        # state.encode('utf-8')
-
-        # print hex(ord(id_h[0])), hex(ord(id_h[1])), '\t', body.userData.id
-        # print hex(ord(x_h[0])), hex(ord(x_h[1])), '\t', int(body.position.x * pixels_per_meter)
-        # print hex(ord(y_h[0])), hex(ord(y_h[1])), '\t', int(body.position.y * pixels_per_meter)
-        # print hex(ord(a_h[0])), hex(ord(a_h[1])), '\t', self.rad_to_deg(body.angle)
-
-        # print int(hex(ord(id_h[0])), base=16), int(hex(ord(id_h[1])), base=16)
-        # print chr(int(hex(ord(id_h[0])), base=16)), chr(int(hex(ord(id_h[1])), base=16))
-        # print chr(body.userData.id << 8)
-
-        return state
+        for i in range(self.offset, self.offset + 8):
+            deb += str(blob[i]) + '\t'
+        self.offset += 8
+        # print deb
+        return deb
 
     def world_state_deb(self):
         message = ''
@@ -402,7 +384,7 @@ class myContactListener(b2ContactListener):
             # print 'd'
             if contact.enabled:
                 if not door.userData.locked:
-                    print( door.userData.id, 'go')
+                    print door.userData.id, 'go'
                     self.doors.append(door)
                     door.joints[0].joint.motorEnabled = True
                     door.joints[0].joint.maxMotorTorque  = 10
@@ -411,18 +393,18 @@ class myContactListener(b2ContactListener):
 
                     if door.userData.state == 0:
                         d = self.direction(door, worldManifold.points[0])
-                        print ('0 to ' + str(d))
+                        print '0 to ' + str(d)
                         # if abs(d * math.pi / 2 + door.angle) <= math.pi / 2:
                         door.userData.state = d
                         door.userData.angle = d * math.pi / 2
                         door.joints[0].joint.motorSpeed = -d * math.pi
                     elif door.userData.state == 1:
-                        print ('1 to 0')
+                        print '1 to 0'
                         door.userData.state = 0
                         door.userData.angle = 0
                         door.joints[0].joint.motorSpeed = 1 * math.pi
                     elif door.userData.state == -1:
-                        print ('-1 to 0')
+                        print '-1 to 0'
                         door.userData.state = 0
                         door.userData.angle = 0
                         door.joints[0].joint.motorSpeed = -1 * math.pi

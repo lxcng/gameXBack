@@ -26,7 +26,7 @@ class Updater:
                 # print 'up', ws_id
             except Exception as e:
                 print (e)
-                print ('\n\ndisconnected!!!: ', ws_id)
+                print '\n\ndisconnected!!!: ', ws_id
                 self.client_sockets.get(ws_id).close()
                 self.client_sockets.pop(ws_id)
                 self.world.del_child(ws_id)
@@ -39,7 +39,7 @@ class Updater:
     def start(self):
         self.running = True
         gevent.spawn(self.start_updates)
-        print( 'updates started', self.delay)
+        print 'updates started', self.delay
 
     def stop(self):
         self.running = False

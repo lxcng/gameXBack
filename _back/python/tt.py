@@ -18,18 +18,18 @@ lvlreader.parse(w)
 w.add_player('112', (0.0, 1.0))
 
 # w.add_player('113', (0.85, 0.6))
-w.add_player('113', (150.0 / 200.0, -100.0 / 200.0))
+# w.add_player('113', (150.0 / 200.0, -100.0 / 200.0))
 
 # w.add_door('door1', (0.5, 0), (0.05, 0.4), 3)
 
 # w.modify_child('112', (1.0, 0.0), 0, False)
 # w.modify_child('112', (0.0, 0.0), math.pi / 4, True)
-w.modify_child(23, (0.0, 0.0), 0.0, True)
+w.modify_child(23, (0.0, 0.0), 0.0, False)
 
-a =  w.world_state_ec(23)
-print (a)
-print ([ord(n) for n in a])
-print (w.world_state_deb())
+a = w.world_state_ec(23)
+print a
+# print [ord(n) for n in a]
+print w.world_state_deb()
 
 for i in range(100):
     # w.modify_child('112', (-1.0, 0.0), 0, False)
